@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.min.css">
+    <title>MongoChat</title>
+    <style>
+        #messages {
+            height: 300px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="row">
+            <div class="col s12 m6 offset-m3">
+                <h1 class="center-align">
+                    MongoChat 
+                    <button id="clear" class="btn waves-effect waves-light red"></button>
+                </h1>
+                <div id="status"></div>
+                <div id="chat">
+                    <div class="input-field col s12">
+                        <input id="username" type="text" class="validate">
+                        <label for="username">Username</label>
+                    </div>
+                    <div class="card blue-grey darken-1 col s12">
+                        <div class="card-content white-text">
+                            <div id="messages"></div>
+                        </div>
+                    </div><br/>
+                    <div class="input-field col s10">
+                        <textarea id="textarea" class="materialize-textarea"></textarea>
+                        <label for="textarea">Type a Message...</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"> </script>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/js/materialize.min.js"></script>
+    
+    <script>
+        (function() {
+            "use strict";
+            let get = (id) => document.getElementById(id),
+            element =  {                
+                status: get('status'),
+                messages: get('messages'),
+                textarea: get('textarea'),
+                username: get('username'),
+                clearBtn: get('clear')
+            },
+            statusDefault = element.status.textContent,
+            setStatus = (s) => {
+                element.status.textContent = s;
+
+                if(s !== statusDefault) {
+                    let delay = setTimeout(() => {
+                        setStatus(statusDefault);
+                    }, 4000);
+                }
+            };
+            let socket = io.connect('http://localhost:4000');
+            
+            if(socket !== undefined) {
+
+                socket.on('output', (data) => {
+                    console.log(data);
+                    if(data.length) {             
+                        data.forEach(msg => {
+                            let message = document.createElement('div');
+                            message.setAttribute('class', 'chat-message');
+                            message.textContent = `${msg.name}: ${msg.message}`;
+                            element.messages.appendChild(message);
+                            element.messages.insertBefore(message, element.messages.firstChild);
+                        });
+                    }
+                });
+
+                socket.on('status', (data) => {
+                    setStatus((typeof data === 'object') ? data.message : data);
+                    if(data.clear) {
+                        element.textarea.value = '';
+                    }
+                });
+
+                element.textarea.addEventListener('keydown', (event) => {
+                    
+                    if(event.which === 13 && event.shiftKey == false) {
+                        socket.emit('inputs', {
+                            name: element.username.value,
+                            message: element.textarea.value
+                        });
+                         event.preventDefault();
+                    }                   
+                });
+            }
+
+        })();
+    </script>
+</body>
+</html>
